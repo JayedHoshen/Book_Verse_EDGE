@@ -1,0 +1,81 @@
+import { create } from "zustand";
+import { adminAnalyticsAPI } from "@/lib/mock/adminApi";
+
+export const useAdminAnalyticsStore = create((set, get) => ({
+  data: null,
+  timeRange: "monthly",
+  isLoading: false,
+  error: null,
+  lastUpdated: null,
+
+  fetchAnalytics: async () => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const response = await adminAnalyticsAPI.getAnalytics(get().timeRange);
+      set({
+        data: response.data,
+        isLoading: false,
+        lastUpdated: response.timestamp,
+      });
+    } catch (error) {
+      set({
+        error: error.message || "Failed to fetch analytics",
+        isLoading: false,
+      });
+    }
+  },
+
+  setTimeRange: (range) => {
+    set({ timeRange: range });
+    // Auto-fetch when time range changes
+    get().fetchAnalytics();
+  },
+
+  exportReport: async () => {
+    try {
+      const response = await adminAnalyticsAPI.exportReport(get().timeRange);
+      return response.downloadUrl;
+    } catch (error) {
+      throw new Error(error.message || "Failed to export report");
+    }
+  },
+
+  clearError: () => set({ error: null }),
+
+  getStatsCards: () => {
+    const { data } = get();
+    if (!data) return [];
+
+    return [
+      {
+        label: "Total Revenue",
+        value: `$${data.revenue.total.toLocaleString()}`,
+        growth: data.revenue.growth,
+        icon: "DollarSign",
+        color: "blue",
+      },
+      {
+        label: "Total Orders",
+        value: data.orders.total.toString(),
+        growth: data.orders.growth,
+        icon: "ShoppingBag",
+        color: "green",
+      },
+      {
+        label: "Total Customers",
+        value: data.customers.total.toString(),
+        growth: data.customers.growth,
+        icon: "Users",
+        color: "purple",
+      },
+      {
+        label: "Products Sold",
+        value: data.orders.total.toString(),
+        growth: data.orders.growth,
+        icon: "Package",
+        color: "orange",
+      },
+    ];
+  },
+}));
